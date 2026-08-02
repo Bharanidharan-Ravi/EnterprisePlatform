@@ -142,3 +142,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+.vs/VSWorkspaceState.json
+.vs/EnterprisePlatform/v17/.wsuo
+.vs/EnterprisePlatform/v17/DocumentLayout.json
+backend/.vs/EnterprisePlatform/v18/.suo
+frontend/pnpm-workspace.yaml
+backend/.vs/EnterprisePlatform/v18/DocumentLayout.json

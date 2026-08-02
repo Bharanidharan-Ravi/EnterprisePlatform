@@ -1,0 +1,102 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 000000C1 A0A1:F58A
+D:.
+|   .gitignore
+|   CHANGELOG.md
+|   CONTRIBUTING.md
+|   LICENSE
+|   README.md
+|   RepositoryStructure.txt
+|   
++---.github
+|   |   PULL_REQUEST_TEMPLATE.md
+|   |   
+|   +---ISSUE_TEMPLATE
+|   \---workflows
++---backend
+|   |   EnterprisePlatform.sln
+|   |   
+|   +---build
+|   |       Directory.Build.props
+|   |       Directory.Packages.props
+|   |       NuGet.Config
+|   |       
+|   +---playground
+|   |   \---APIPlatform.Playground
+|   +---samples
+|   |   +---Sample.CRM.Api
+|   |   +---Sample.HRMS.Api
+|   |   +---Sample.Inventory.Api
+|   |   \---Sample.WebApi
+|   +---src
+|   |   +---APIPlatform.AI
+|   |   +---APIPlatform.Authentication
+|   |   +---APIPlatform.Authorization
+|   |   +---APIPlatform.Cache
+|   |   +---APIPlatform.Database
+|   |   +---APIPlatform.Diagnostics
+|   |   +---APIPlatform.Foundation
+|   |   +---APIPlatform.Integration
+|   |   +---APIPlatform.Logging
+|   |   +---APIPlatform.Notification
+|   |   +---APIPlatform.Numbering
+|   |   +---APIPlatform.Reporting
+|   |   +---APIPlatform.SAP
+|   |   +---APIPlatform.Scheduler
+|   |   +---APIPlatform.Search
+|   |   +---APIPlatform.Security
+|   |   +---APIPlatform.Shared
+|   |   +---APIPlatform.SignalR
+|   |   +---APIPlatform.Storage
+|   |   +---APIPlatform.Sync
+|   |   +---APIPlatform.Validation
+|   |   \---APIPlatform.Workflow
+|   \---tests
+|       +---APIPlatform.Authentication.Tests
+|       +---APIPlatform.Database.Tests
+|       +---APIPlatform.Notification.Tests
+|       +---APIPlatform.Search.Tests
+|       +---APIPlatform.Sync.Tests
+|       \---APIPlatform.Workflow.Tests
++---docs
+|   +---api-platform
+|   +---architecture
+|   +---images
+|   +---release-notes
+|   +---samples
+|   \---ui-platform
++---frontend
+|   |   package.json
+|   |   pnpm-workspace.yaml
+|   |   
+|   +---apps
+|   |   +---sample-crm
+|   |   +---sample-hrms
+|   |   \---sample-inventory
+|   +---packages
+|   |   +---ui-platform
+|   |   +---ui-platform-auth
+|   |   +---ui-platform-calendar
+|   |   +---ui-platform-core
+|   |   +---ui-platform-crud
+|   |   +---ui-platform-dashboard
+|   |   +---ui-platform-editor
+|   |   +---ui-platform-forms
+|   |   +---ui-platform-foundation
+|   |   +---ui-platform-grid
+|   |   +---ui-platform-hooks
+|   |   +---ui-platform-layout
+|   |   +---ui-platform-notification
+|   |   +---ui-platform-routing
+|   |   +---ui-platform-search
+|   |   +---ui-platform-shared
+|   |   +---ui-platform-signalr
+|   |   +---ui-platform-storage
+|   |   +---ui-platform-theme
+|   |   +---ui-platform-utils
+|   |   \---ui-platform-workflow
+|   +---playground
+|   |   \---ui-platform-playground
+|   \---tests
++---scripts
+\---tools
