@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\APIPlatform.Foundation\APIPlatform.Foundation.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Shared\APIPlatform.Shared.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Logging\APIPlatform.Logging.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Configuration\APIPlatform.Configuration.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+
+</Project>
