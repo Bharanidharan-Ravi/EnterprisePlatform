@@ -4,6 +4,14 @@
     <ProjectReference Include="..\..\src\APIPlatform.Shared\APIPlatform.Shared.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Logging\APIPlatform.Logging.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Configuration\APIPlatform.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Validation\APIPlatform.Validation.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Database\APIPlatform.Data.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Authentication\APIPlatform.Authentication.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

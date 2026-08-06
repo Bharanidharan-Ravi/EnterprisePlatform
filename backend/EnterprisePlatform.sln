@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APIPlatform.Logging", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APIPlatform.Configuration", "src\APIPlatform.Configuration\APIPlatform.Configuration.csproj", "{C6B0FC02-8462-45EA-AADB-397ED94AA64C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APIPlatform.Validation", "src\APIPlatform.Validation\APIPlatform.Validation.csproj", "{4CCC577C-6398-47FE-A49D-1E7F50787629}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +73,18 @@ Global
 		{C6B0FC02-8462-45EA-AADB-397ED94AA64C}.Release|x64.Build.0 = Release|Any CPU
 		{C6B0FC02-8462-45EA-AADB-397ED94AA64C}.Release|x86.ActiveCfg = Release|Any CPU
 		{C6B0FC02-8462-45EA-AADB-397ED94AA64C}.Release|x86.Build.0 = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|x64.Build.0 = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Debug|x86.Build.0 = Debug|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|x64.ActiveCfg = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|x64.Build.0 = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|x86.ActiveCfg = Release|Any CPU
+		{4CCC577C-6398-47FE-A49D-1E7F50787629}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,5 +94,6 @@ Global
 		{DA9DF242-823D-44D7-AC20-08B0BFEC1727} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{CF5B4189-F717-43C1-AA74-261DDD39BC27} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C6B0FC02-8462-45EA-AADB-397ED94AA64C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{4CCC577C-6398-47FE-A49D-1E7F50787629} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

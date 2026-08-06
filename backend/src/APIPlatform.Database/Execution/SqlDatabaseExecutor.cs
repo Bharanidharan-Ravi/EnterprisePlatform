@@ -103,7 +103,7 @@ public sealed class SqlDatabaseExecutor : IDatabaseExecutor
             var command = BuildCommand(sql, parameters, commandType,
                 transaction is DatabaseTransaction t ? t.Transaction : null, commandTimeoutSeconds, cancellationToken);
             var gridReader = await connection.QueryMultipleAsync(command);
-            var owner = transaction is DatabaseTransaction ? new NoOpDisposable() : connection;
+            var owner = transaction is DatabaseTransaction ? (IDisposable)new NoOpDisposable() : connection;
             NotifyExecuted(sql, commandType, sw.Elapsed);
             return new MultiResultReader(gridReader, owner);
         }

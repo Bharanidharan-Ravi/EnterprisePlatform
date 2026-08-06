@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="../src/APIPlatform.Authentication/APIPlatform.Authentication.csproj" />
+  <Project Path="../src/APIPlatform.Configuration/APIPlatform.Configuration.csproj" />
+  <Project Path="../src/APIPlatform.Database/APIPlatform.Data.csproj" />
+  <Project Path="../src/APIPlatform.Foundation/APIPlatform.Foundation.csproj" />
+  <Project Path="../src/APIPlatform.Logging/APIPlatform.Logging.csproj" />
+  <Project Path="../src/APIPlatform.Shared/APIPlatform.Shared.csproj" />
+  <Project Path="../src/APIPlatform.Validation/APIPlatform.Validation.csproj" />
+  <Project Path="APIPlatform.Playground/APIPlatform.Playground.csproj" />
+</Solution>
