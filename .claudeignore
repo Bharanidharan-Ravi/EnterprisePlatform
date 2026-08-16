@@ -1,0 +1,48 @@
+﻿# Dependencies & Packages
+node_modules/
+.nuget/
+packages/
+node_modules/.bin/
+
+# Build Outputs
+bin/
+obj/
+dist/
+build/
+*.dll
+*.exe
+
+# IDEs & Editors
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+
+# OS & VCS
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Logs & Temp
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# Test Coverage
+coverage/
+*.lcov
+
+# Large Files
+*.pdf
+*.zip
+*.mp4
+*.iso
+
+# Environment
+.env
+.env.local
+.env.*.local
