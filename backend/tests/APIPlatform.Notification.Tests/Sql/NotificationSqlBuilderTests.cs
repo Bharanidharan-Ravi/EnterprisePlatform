@@ -70,6 +70,42 @@ public class NotificationSqlBuilderTests
         Assert.Contains("@Since", sql);
     }
 
+    /// <summary>
+    /// Pins the strict "greater than" boundary: a notification created in the exact same instant
+    /// as the read cursor (@Since = LastReadOnUtc) must NOT be treated as unread. Regressing this
+    /// to ">=" would make GetUnreadCountAsync/GetNotificationsAsync re-surface notifications the
+    /// user has already read as of that exact timestamp.
+    /// </summary>
+    [Fact]
+    public void RecipientMatch_SinceComparison_IsStrictlyGreaterThan()
+    {
+        var sql = NotificationSqlBuilder.RecipientMatch(new SqlServerNotificationDialect(), groupCount: 0, includeSince: true, countOnly: false, skip: 0, take: 20);
+
+        Assert.Contains("> @Since", sql);
+        Assert.DoesNotContain(">= @Since", sql);
+    }
+
+    /// <summary>
+    /// The group-match branch is an "IN (...)" list inside the same EXISTS semi-join used for
+    /// direct user/ALL targeting, never a JOIN against NotificationTargets. A JOIN would fan out
+    /// one notification row per matching group (duplicate recipients whenever a user belongs to
+    /// more than one targeted group); EXISTS/IN can only ever contribute 0 or 1 row per
+    /// notification regardless of how many of the recipient's groups match, so duplicates are
+    /// structurally impossible by construction, not by later de-duplication.
+    /// </summary>
+    [Fact]
+    public void RecipientMatch_WithMultipleGroups_UsesExistsInClause_NeverJoin_SoNoDuplicateRows()
+    {
+        var sql = NotificationSqlBuilder.RecipientMatch(new SqlServerNotificationDialect(), groupCount: 3, includeSince: false, countOnly: false, skip: 0, take: 20);
+
+        Assert.Contains("TargetKind] = 2 AND", sql);
+        Assert.Contains("IN (@g0, @g1, @g2)", sql);
+        Assert.DoesNotContain("JOIN", sql);
+        // Exactly one row template is selected from Notifications ("n") — group matching only
+        // ever narrows the EXISTS subquery, it can never multiply the outer row.
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(sql, "FROM \\[Notifications\\]"));
+    }
+
     [Fact]
     public void RecipientMatch_CountOnly_UsesCountStarAndNoPaging()
     {

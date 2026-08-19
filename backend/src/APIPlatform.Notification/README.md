@@ -19,9 +19,14 @@ Three tables, deliberately **not** one row per (notification × recipient):
   `LastSyncedOnUtc`. Read state and sync state are intentionally separate columns: a client can
   observe new notifications (sync) without the user having acknowledged them (read).
 
-Reference DDL for both supported engines lives under `Schema/SqlServer` and `Schema/Hana` — apply
-it via your application's own deployment process; the platform has no migration runner yet.
-IDs are API-generated `NVARCHAR(36)` GUIDs and timestamps are API-generated (`IClock.UtcNow`) —
+Reference DDL for both supported engines lives under `Schema/SqlServer` and `Schema/Hana` — kept
+as human-readable documentation of the exact shape below. The executable counterpart is
+`APIPlatform.Database.Migration`'s `NotificationSqlServerMigration`/`NotificationHanaMigration`
+(see that package's README) — apply it via `services.AddDatabaseMigration();
+services.AddNotificationSchemaMigrations();` and an explicit `IMigrationRunner.RunAsync()` call
+from your application, or apply the reference `.sql` files by hand; either way the two must stay
+in sync (same table shape, keys, and indexes). IDs are API-generated `NVARCHAR(36)` GUIDs and
+timestamps are API-generated (`IClock.UtcNow`) —
 no `IDENTITY`, `NEWID()`, or `GETDATE()`/`CURRENT_TIMESTAMP` defaults anywhere in the schema.
 
 **Deferred extension:** exact per-notification read/unread state (`NotificationReadReceipt`) is

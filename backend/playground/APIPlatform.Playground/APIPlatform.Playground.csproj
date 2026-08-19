@@ -6,6 +6,7 @@
     <ProjectReference Include="..\..\src\APIPlatform.Configuration\APIPlatform.Configuration.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Validation\APIPlatform.Validation.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Database\APIPlatform.Data.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Database.Migration\APIPlatform.Database.Migration.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Authentication\APIPlatform.Authentication.csproj" />
   </ItemGroup>
   <ItemGroup>
