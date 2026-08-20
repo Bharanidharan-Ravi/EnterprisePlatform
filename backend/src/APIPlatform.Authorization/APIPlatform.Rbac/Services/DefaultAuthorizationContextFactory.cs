@@ -1,4 +1,4 @@
-using APIPlatform.Foundation;
+using APIPlatform.Foundation.Interfaces;
 using APIPlatform.Rbac.Contexts;
 using APIPlatform.Rbac.Contracts;
 
@@ -25,8 +25,12 @@ public sealed class DefaultAuthorizationContextFactory : IAuthorizationContextFa
     {
         var context = new AuthorizationContext
         {
-            UserId = _currentUser.UserId,
-            TenantId = _tenantContext.TenantId,
+            // Foundation's ICurrentUser/ITenantContext expose UserId/TenantId as nullable (no
+            // caller/tenant resolved yet is a valid state); AuthorizationContext keeps them
+            // required non-null strings, so an unresolved caller/tenant maps to empty string
+            // rather than widening AuthorizationContext's contract.
+            UserId = _currentUser.UserId ?? string.Empty,
+            TenantId = _tenantContext.TenantId ?? string.Empty,
             Request = request
         };
 

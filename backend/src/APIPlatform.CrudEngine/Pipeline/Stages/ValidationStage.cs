@@ -14,7 +14,7 @@ public sealed class ValidationStage<TEntity> : IPipelineStage<TEntity> where TEn
     public Task ExecuteAsync(CrudContext<TEntity> context)
     {
         context.ValidationResult = _validation.Validate(context);
-        if (context.ValidationResult?.IsSuccess == false)
+        if (context.ValidationResult?.IsValid == false)
         {
             context.ShortCircuited = true;
             context.Error = context.ValidationResult.Errors.FirstOrDefault();

@@ -12,7 +12,13 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\APIPlatform.Foundation.Stub\APIPlatform.Foundation.Stub.csproj" />
+    <!-- Real platform contract; Foundation.Stub removed (Phase 1, Section 9). -->
+    <ProjectReference Include="..\..\APIPlatform.Foundation\APIPlatform.Foundation.csproj" />
+    <!-- Nucleus.SharedSchema.Stub intentionally retained: the real Nucleus.SharedSchema is a pure
+         model/enum library with no provider abstraction, and its EntityDefinition/FieldDefinition
+         field-permission shape (PermissionRequirement.ReadRoles/WriteRoles) is not equivalent to
+         this stub's FieldMetadata.DefaultPermissionKey — bridging them is a design decision, not a
+         mechanical fix, so it is deferred rather than done here. See Phase 1 report, Section E. -->
     <ProjectReference Include="..\Nucleus.SharedSchema.Stub\Nucleus.SharedSchema.Stub.csproj" />
   </ItemGroup>
 </Project>

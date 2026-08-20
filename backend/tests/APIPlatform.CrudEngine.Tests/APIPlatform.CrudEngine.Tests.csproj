@@ -3,15 +3,17 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="APIPlatform.CrudEngine.Tests" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\APIPlatform.Foundation\APIPlatform.Foundation.csproj" />
-    <ProjectReference Include="..\APIPlatform.Database\APIPlatform.Data.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.CrudEngine\APIPlatform.CrudEngine.csproj" />
     <ProjectReference Include="..\..\..\nucleus\shared\Nucleus.SharedSchema\Nucleus.SharedSchema.csproj" />
   </ItemGroup>
 </Project>

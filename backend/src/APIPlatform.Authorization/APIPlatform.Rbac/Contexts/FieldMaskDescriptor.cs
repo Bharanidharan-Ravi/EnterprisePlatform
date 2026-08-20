@@ -21,7 +21,7 @@ public sealed class FieldMaskDescriptor
                 permissions.AllowedKeys.Contains(rule.PermissionKey) &&
                 !permissions.DeniedKeys.Contains(rule.PermissionKey);
 
-            dict[rule.FieldKey] = grantedByPermission ? rule.Access : FieldAccess.None;
+            dict[rule.FieldKey] = grantedByPermission ? rule.Access : Models.FieldAccess.None;
         }
         return new FieldMaskDescriptor { FieldAccess = dict };
     }

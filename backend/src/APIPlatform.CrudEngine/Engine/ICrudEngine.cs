@@ -1,4 +1,5 @@
 using APIPlatform.CrudEngine.Models;
+using APIPlatform.Foundation.Entities;
 using APIPlatform.Foundation.Interfaces;
 using APIPlatform.Foundation.Results;
 

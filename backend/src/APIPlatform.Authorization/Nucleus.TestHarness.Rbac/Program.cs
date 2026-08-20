@@ -2,11 +2,12 @@
 // "done" without Test Harness proof). Scoped to Rbac alone — Auth/CrudEngine aren't built in
 // this project yet, so ICurrentUser/ITenantContext are satisfied here with trivial stand-ins.
 
-using APIPlatform.Foundation;
+using APIPlatform.Foundation.Interfaces;
 using APIPlatform.Rbac.Contexts;
 using APIPlatform.Rbac.Contracts;
 using APIPlatform.Rbac.DependencyInjection;
 using APIPlatform.Rbac.Models;
+using APIPlatform.Rbac.Stores;
 using Microsoft.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
@@ -17,6 +18,14 @@ services.AddRbac();
 var provider = services.BuildServiceProvider();
 using var scope = provider.CreateScope();
 var sp = scope.ServiceProvider;
+
+// InMemoryRoleStore.GetEffectiveRolesForUserAsync only returns roles that have a seeded Role
+// record (it resolves user<->role assignments against _roles for hierarchy/metadata) —
+// AssignRoleAsync alone records the assignment tuple but not the Role itself.
+if (sp.GetRequiredService<IRoleStore>() is InMemoryRoleStore roleStore)
+{
+    roleStore.SeedRole(new Role { Id = "role-editor", Name = "Editor", TenantId = "tenant-1" });
+}
 
 var roleService = sp.GetRequiredService<IRoleService>();
 await roleService.AssignRoleAsync("tenant-1", "user-1", "role-editor");
@@ -39,12 +48,18 @@ Console.WriteLine($"Widget.Delete -> Allowed={denied.Allowed}  Reason={denied.Re
 sealed class HarnessCurrentUser : ICurrentUser
 {
     public HarnessCurrentUser(string userId) => UserId = userId;
-    public string UserId { get; }
+    public string? UserId { get; }
+    public string? UserName => UserId;
     public bool IsAuthenticated => true;
+    public IReadOnlyDictionary<string, string> Claims { get; } = new Dictionary<string, string>();
+    public string? GetClaim(string claimType) => Claims.TryGetValue(claimType, out var value) ? value : null;
 }
 
 sealed class HarnessTenantContext : ITenantContext
 {
     public HarnessTenantContext(string tenantId) => TenantId = tenantId;
-    public string TenantId { get; }
+    public string? TenantId { get; }
+    public string? TenantCode => TenantId;
+    public bool HasTenant => TenantId is not null;
+    public bool IsMultiTenant => true;
 }
