@@ -30,6 +30,21 @@ builder.Services.AddTransient<IValidator<SampleRequest>, SampleRequestValidator>
 builder.Services.AddScoped<APIPlatform.Playground.Services.PlaygroundValidationService>();
 builder.Services.AddHostedService<APIPlatform.Playground.Services.PlaygroundInitializationService>();
 
+// Phase 2: one generic entity (Employee) end-to-end through CrudEngine + Rbac.
+builder.Services.AddEmployeeModule();
+
+// Phase 2: no CORS was configured anywhere in the platform; the frontend test app
+// (frontend/playground/ui-platform-playground, a Vite dev server) needs it to call this API
+// from a different origin during local development.
+const string FrontendDevCorsPolicy = "FrontendDevCorsPolicy";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendDevCorsPolicy, policy => policy
+        .WithOrigins("http://localhost:5190")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -42,6 +57,7 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "APIPlatform Playground v1");
 });
 
+app.UseCors(FrontendDevCorsPolicy);
 app.UseAuthentication();
 app.UseCurrentUserContext();
 app.UseAuthorization();

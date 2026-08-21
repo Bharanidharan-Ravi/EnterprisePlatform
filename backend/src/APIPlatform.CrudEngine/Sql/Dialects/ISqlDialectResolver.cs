@@ -1,4 +1,5 @@
 using APIPlatform.Data.Options;
+using Microsoft.Extensions.Options;
 
 namespace APIPlatform.CrudEngine.Sql.Dialects;
 
@@ -9,14 +10,20 @@ public interface ISqlDialectResolver
     ISqlDialect Resolve();
 }
 
-/// <summary>ASSUMPTION BOUNDARY: assumes DatabaseOptions exposes a `Provider` property of type
-/// DatabaseProvider (per your Step 2 summary: "Options/ (DatabaseProvider enum, DatabaseOptions)").
-/// Only this class needs adjusting if the real property name differs.</summary>
+/// <summary>
+/// Phase 2 fix: previously took a raw <see cref="DatabaseOptions"/> constructor parameter, but
+/// APIPlatform.Data's AddDatabase() only ever registers it through the standard
+/// <see cref="IOptions{TOptions}"/> pattern (services.Configure(...)) — nothing registers a bare
+/// DatabaseOptions singleton. Combining AddDatabase() with AddCrudEngine() in the same container
+/// (never previously exercised anywhere in this repo before Phase 2's Employee wiring) failed to
+/// resolve this type at runtime as a result. Depending on IOptions&lt;DatabaseOptions&gt; instead
+/// matches how every other APIPlatform.Data consumer is expected to read these options.
+/// </summary>
 public sealed class DefaultSqlDialectResolver : ISqlDialectResolver
 {
     private readonly DatabaseOptions _options;
 
-    public DefaultSqlDialectResolver(DatabaseOptions options) => _options = options;
+    public DefaultSqlDialectResolver(IOptions<DatabaseOptions> options) => _options = options.Value;
 
     public ISqlDialect Resolve() => _options.Provider switch
     {

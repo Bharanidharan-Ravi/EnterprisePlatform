@@ -1,0 +1,11 @@
+{
+  "name": "enterprise-platform-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Nucleus UIPlatform monorepo root. Was an empty file before Phase 2 (prompt/phase2.md 38's 'known empty workspace configuration') — populated only as far as needed to build/run the Phase 2 Employee test app; individual package internals are untouched.",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "dev:employee-playground": "pnpm --filter @nucleus/ui-platform-playground dev"
+  }
+}

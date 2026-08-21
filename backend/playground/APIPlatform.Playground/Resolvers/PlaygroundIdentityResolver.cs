@@ -6,7 +6,11 @@ using APIPlatform.Authentication.Models;
 namespace APIPlatform.Playground.Resolvers;
 
 /// <summary>
-/// Resolves identities for the playground environment.
+/// TEST ONLY — resolves identities for the Playground environment against two hardcoded logins.
+/// There is no real user store behind this; it exists purely so the Playground host has
+/// something to authenticate against for manual/Phase-2 testing (login, RBAC allow/deny proof).
+/// The platform must never depend on either of these hardcoded users — a real deployment
+/// supplies its own <see cref="IIdentityResolver"/> backed by a real user store.
 /// </summary>
 public class PlaygroundIdentityResolver : IIdentityResolver
 {
@@ -21,7 +25,9 @@ public class PlaygroundIdentityResolver : IIdentityResolver
     }
 
     /// <summary>
-    /// Resolves the identity for a user.
+    /// Resolves the identity for a user. TEST ONLY: "admin" (full Employee CRUD, seeded via
+    /// EmployeeModuleInitializationService) and "viewer" (Employee read-only) are the only two
+    /// recognized logins.
     /// </summary>
     public Task<UserInfo?> ResolveAsync(string loginIdentifier, string? tenantId, CancellationToken cancellationToken = default)
     {
@@ -33,6 +39,19 @@ public class PlaygroundIdentityResolver : IIdentityResolver
                 Username = "admin",
                 Email = "admin@example.com",
                 PasswordHash = _passwordHasher.Hash("Admin@123"),
+                IsActive = true,
+                IsLocked = false
+            });
+        }
+
+        if (loginIdentifier == "viewer")
+        {
+            return Task.FromResult<UserInfo?>(new UserInfo
+            {
+                UserId = "user-456",
+                Username = "viewer",
+                Email = "viewer@example.com",
+                PasswordHash = _passwordHasher.Hash("Viewer@123"),
                 IsActive = true,
                 IsLocked = false
             });

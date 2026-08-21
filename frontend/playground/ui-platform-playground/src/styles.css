@@ -1,0 +1,75 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 2rem;
+  background: #f8f9fb;
+  color: #1a1a1a;
+}
+
+h1 {
+  font-size: 1.25rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e2e2;
+}
+
+.employee-form {
+  max-width: 480px;
+}
+
+.employee-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.form-error {
+  color: #b3261e;
+  font-size: 0.875rem;
+}
+
+.login-page {
+  max-width: 360px;
+  margin: 4rem auto;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+button {
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+}

@@ -8,6 +8,11 @@
     <ProjectReference Include="..\..\src\APIPlatform.Database\APIPlatform.Data.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Database.Migration\APIPlatform.Database.Migration.csproj" />
     <ProjectReference Include="..\..\src\APIPlatform.Authentication\APIPlatform.Authentication.csproj" />
+    <!-- Phase 2: wires this host to CrudEngine/SharedSchema/Rbac for the first time — no prior
+         Playground code exercised any of these three. -->
+    <ProjectReference Include="..\..\src\APIPlatform.CrudEngine\APIPlatform.CrudEngine.csproj" />
+    <ProjectReference Include="..\..\..\nucleus\shared\Nucleus.SharedSchema\Nucleus.SharedSchema.csproj" />
+    <ProjectReference Include="..\..\src\APIPlatform.Authorization\APIPlatform.Rbac\APIPlatform.Rbac.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
