@@ -18,17 +18,20 @@ public sealed class RefreshTokenService : IRefreshTokenService
         _options = options.Value;
     }
 
-    public (string Token, DateTimeOffset Expiry) Generate(string userId)
+    public (string Token, DateTimeOffset Expiry) Generate(string userId, string? sessionId = null)
     {
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
                           .Replace('+', '-').Replace('/', '_').TrimEnd('=');
         var expiry = DateTimeOffset.UtcNow.AddDays(_options.RefreshTokenExpiryDays);
-        _store.Save(token, userId, expiry);
+        _store.Save(token, userId, expiry, sessionId);
         return (token, expiry);
     }
 
     public Task<bool> ValidateAsync(string token, string userId, CancellationToken cancellationToken = default)
         => Task.FromResult(_store.TryGet(token, out var entry) && entry.UserId == userId && entry.Expiry > DateTimeOffset.UtcNow);
+
+    public Task<string?> GetSessionIdAsync(string token, CancellationToken cancellationToken = default)
+        => Task.FromResult(_store.TryGet(token, out var entry) ? entry.SessionId : null);
 
     public Task RevokeAsync(string token, CancellationToken cancellationToken = default)
     {
@@ -47,22 +50,22 @@ public sealed class RefreshTokenService : IRefreshTokenService
 /// backed implementation by registering a different IRefreshTokenStore.</summary>
 public interface IRefreshTokenStore
 {
-    void Save(string token, string userId, DateTimeOffset expiry);
+    void Save(string token, string userId, DateTimeOffset expiry, string? sessionId);
     bool TryGet(string token, out RefreshTokenEntry entry);
     void Delete(string token);
     void DeleteAllForUser(string userId);
 }
 
-public sealed record RefreshTokenEntry(string UserId, DateTimeOffset Expiry);
+public sealed record RefreshTokenEntry(string UserId, DateTimeOffset Expiry, string? SessionId);
 
 public sealed class InMemoryRefreshTokenStore : IRefreshTokenStore
 {
     private readonly Dictionary<string, RefreshTokenEntry> _store = new(StringComparer.Ordinal);
     private readonly Lock _lock = new();
 
-    public void Save(string token, string userId, DateTimeOffset expiry)
+    public void Save(string token, string userId, DateTimeOffset expiry, string? sessionId)
     {
-        lock (_lock) _store[token] = new(userId, expiry);
+        lock (_lock) _store[token] = new(userId, expiry, sessionId);
     }
 
     public bool TryGet(string token, out RefreshTokenEntry entry)

@@ -59,4 +59,13 @@ public class PlaygroundIdentityResolver : IIdentityResolver
 
         return Task.FromResult<UserInfo?>(null);
     }
+
+    /// <summary>TEST ONLY, same two hardcoded logins as ResolveAsync — looked up by Id instead of
+    /// username for refresh-token rotation.</summary>
+    public Task<UserInfo?> ResolveByIdAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        if (userId == "user-123") return ResolveAsync("admin", null, cancellationToken);
+        if (userId == "user-456") return ResolveAsync("viewer", null, cancellationToken);
+        return Task.FromResult<UserInfo?>(null);
+    }
 }

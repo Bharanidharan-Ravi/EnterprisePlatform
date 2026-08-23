@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 using APIPlatform.Authentication.Context;
 using APIPlatform.Authentication.Interfaces;
 using APIPlatform.Authentication.Models;
+using APIPlatform.CrudEngine.Interfaces;
+using APIPlatform.CrudEngine.Models;
+using APIPlatform.Foundation.Exceptions;
 using APIPlatform.Playground.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,15 +27,21 @@ public class AuthenticationController : ControllerBase
     private readonly IAuthenticationService _authService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ICurrentUserContextAccessor _currentUserContextAccessor;
+    private readonly IDynamicCommandService _dynamicCommand;
+    private readonly IDynamicQueryService _dynamicQuery;
 
     public AuthenticationController(
         IAuthenticationService authService,
         IPasswordHasher passwordHasher,
-        ICurrentUserContextAccessor currentUserContextAccessor)
+        ICurrentUserContextAccessor currentUserContextAccessor,
+        IDynamicCommandService dynamicCommand,
+        IDynamicQueryService dynamicQuery)
     {
         _authService = authService;
         _passwordHasher = passwordHasher;
         _currentUserContextAccessor = currentUserContextAccessor;
+        _dynamicCommand = dynamicCommand;
+        _dynamicQuery = dynamicQuery;
     }
 
     [HttpPost("login")]
@@ -44,6 +53,111 @@ public class AuthenticationController : ControllerBase
             return Ok(ApiEnvelope.Ok(response));
         }
         return Unauthorized(ApiEnvelope.Fail(response.ErrorCode ?? "authentication_failed", response.ErrorMessage ?? "Authentication failed."));
+    }
+
+    /// <summary>
+    /// Generic registration: hashes <see cref="DynamicRegistrationRequest.PlainPassword"/> via the
+    /// auth engine's IPasswordHasher, drops the result into
+    /// <see cref="DynamicRegistrationRequest.PasswordColumn"/> alongside the rest of Values, and
+    /// inserts the row through IDynamicCommandService. Table shape and column names are entirely
+    /// caller-supplied — this is the "reload user data" write counterpart, so a generated app never
+    /// gets a hand-written SQL_USER-shaped registration endpoint baked into the platform.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] DynamicRegistrationRequest request, CancellationToken cancellationToken)
+    {
+        var passwordHash = _passwordHasher.Hash(request.PlainPassword);
+
+        var values = new Dictionary<string, object?>(request.Values, StringComparer.OrdinalIgnoreCase)
+        {
+            [request.PasswordColumn] = passwordHash
+        };
+        ApplyAuditStamps(values, request.CreatedByColumn, request.CreatedBy, request.CreatedOnColumn);
+
+        try
+        {
+            var rowsInserted = await _dynamicCommand.InsertAsync(
+                new DynamicInsertRequest { TableName = request.TableName, Values = values },
+                cancellationToken);
+
+            return Ok(ApiEnvelope.Ok(new { Inserted = rowsInserted }));
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ApiEnvelope.Fail(
+                "validation_failed",
+                "The registration request failed validation.",
+                ex.Errors.ToDictionary(e => e.Key, e => e.Value)));
+        }
+    }
+
+    /// <summary>
+    /// Bulk import: reads <see cref="DynamicMigrationRequest.SourceTable"/> through
+    /// IDynamicQueryService (SourceTable may be database/schema-qualified — e.g.
+    /// "IQS_DB.dbo.SEC_USER" read across into whatever database this app's own connection string
+    /// points at), remaps each row's columns onto TargetTable's shape via ColumnMap, stamps every
+    /// migrated row with one shared hash of PlainPassword (a temporary password every imported
+    /// account gets, same idea as Register but for N rows from an existing source table instead of
+    /// one caller-supplied row), merges in FixedValues (target columns with no source counterpart —
+    /// audit columns, IsActive defaults, etc.), and writes each row through IDynamicCommandService.
+    /// Both table shapes and the mapping between them are entirely caller-supplied; nothing here
+    /// names SEC_USER, Logins, or any other concrete table. One bad row does not abort the batch —
+    /// failures are collected and returned per row alongside the rows that succeeded.
+    /// </summary>
+    [HttpPost("import")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Import([FromBody] DynamicMigrationRequest request, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> sourceRows;
+        try
+        {
+            sourceRows = await _dynamicQuery.QueryAsync(new DynamicQueryRequest
+            {
+                TableName = request.SourceTable,
+                Columns = request.SourceColumns,
+                Filters = request.SourceFilters,
+                Top = request.SourceTop
+            }, cancellationToken);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(ApiEnvelope.Fail(
+                "validation_failed",
+                "The source query failed validation.",
+                ex.Errors.ToDictionary(e => e.Key, e => e.Value)));
+        }
+
+        var passwordHash = _passwordHasher.Hash(request.PlainPassword);
+        var inserted = 0;
+        var failures = new List<object>();
+
+        for (var i = 0; i < sourceRows.Count; i++)
+        {
+            var values = new Dictionary<string, object?>(request.FixedValues, StringComparer.OrdinalIgnoreCase);
+            foreach (var (sourceColumn, targetColumn) in request.ColumnMap)
+                values[targetColumn] = sourceRows[i].TryGetValue(sourceColumn, out var value) ? value : null;
+            values[request.PasswordColumn] = passwordHash;
+            ApplyAuditStamps(values, request.CreatedByColumn, request.CreatedBy, request.CreatedOnColumn);
+
+            try
+            {
+                await _dynamicCommand.InsertAsync(new DynamicInsertRequest { TableName = request.TargetTable, Values = values }, cancellationToken);
+                inserted++;
+            }
+            catch (ValidationException ex)
+            {
+                failures.Add(new { Row = i, Errors = ex.Errors });
+            }
+        }
+
+        return Ok(ApiEnvelope.Ok(new
+        {
+            SourceRowCount = sourceRows.Count,
+            Inserted = inserted,
+            Failed = failures.Count,
+            Errors = failures
+        }));
     }
 
     [HttpGet("me")]
@@ -60,14 +174,11 @@ public class AuthenticationController : ControllerBase
     }
 
     /// <summary>
-    /// KNOWN LIMITATION (documented, not fixed this phase — see phase2 report Section N):
-    /// AuthenticationService.RefreshAsync always revokes the refresh token and returns
-    /// Ok=false/REAUTH_REQUIRED, even for a valid token, by explicit platform design ("lightweight
-    /// rotation only, full re-auth pipeline intentionally not re-run here"). This endpoint's
-    /// contract is still fixed to match the frontend (envelope + the request shape the backend
-    /// actually requires), but a genuine refresh will not succeed until that platform behavior
-    /// changes — out of scope for phase2.md 24 ("do not turn this into the full authentication
-    /// modernization phase").
+    /// On a valid, unexpired refresh token: revokes it (single-use), re-resolves the account via
+    /// IIdentityResolver.ResolveByIdAsync (so a since-deactivated/locked account is caught even
+    /// though no password check runs here), rebuilds claims, and issues a new access token plus a
+    /// rotated refresh token. Password verification is intentionally not re-run — refresh trusts
+    /// the token, not a password — matching standard silent-refresh behavior.
     /// </summary>
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
@@ -112,6 +223,23 @@ public class AuthenticationController : ControllerBase
     {
         return Ok(new { Message = "You are authenticated" });
     }
+
+    /// <summary>
+    /// Stamps CreatedBy/CreatedOn onto a row about to be written, if the caller named target
+    /// columns for them. "Who" always comes from the request (only the caller knows that); "when"
+    /// is always computed here, server-side, on the theory that a client-supplied timestamp isn't
+    /// trustworthy — never taken from Values/FixedValues even if a caller tried to set one there.
+    /// Both stamps are opt-in (null column name = table has no such column) so this works whether
+    /// or not the target table carries audit columns at all.
+    /// </summary>
+    private static void ApplyAuditStamps(IDictionary<string, object?> values, string? createdByColumn, string? createdBy, string? createdOnColumn)
+    {
+        if (!string.IsNullOrWhiteSpace(createdByColumn))
+            values[createdByColumn] = createdBy;
+
+        if (!string.IsNullOrWhiteSpace(createdOnColumn))
+            values[createdOnColumn] = DateTime.UtcNow;
+    }
 }
 
 public class RefreshRequest
@@ -132,4 +260,61 @@ public class HashRequest
     /// Automatically generated summary.
     /// </summary>
     public required string Password { get; set; }
+}
+
+/// <summary>
+/// Table/columns are caller-supplied, same as DynamicQueryRequest/DynamicInsertRequest — the
+/// engine (and this controller) never hardcodes a user table shape. PlainPassword never reaches
+/// IDynamicCommandService as-is; AuthenticationController.Register hashes it first and writes the
+/// result into PasswordColumn.
+/// </summary>
+public class DynamicRegistrationRequest
+{
+    public required string TableName { get; set; }
+    public required IReadOnlyDictionary<string, object?> Values { get; set; }
+    public required string PasswordColumn { get; set; }
+    public required string PlainPassword { get; set; }
+
+    /// <summary>Target column to stamp with <see cref="CreatedBy"/>. Omit if the table has no
+    /// such column.</summary>
+    public string? CreatedByColumn { get; set; }
+    public string? CreatedBy { get; set; }
+
+    /// <summary>Target column to stamp with the server's current UTC time. Omit if the table has
+    /// no such column — the value is always computed here, never taken from the caller.</summary>
+    public string? CreatedOnColumn { get; set; }
+}
+
+/// <summary>
+/// Describes a bulk copy from one table shape into another. SourceTable may be database/schema-
+/// qualified for a cross-database read; TargetTable is resolved against this app's own connection
+/// (so normally unqualified). ColumnMap keys are source column names (as returned by the source
+/// query), values are the target column each one is written into.
+/// </summary>
+public class DynamicMigrationRequest
+{
+    public required string SourceTable { get; set; }
+    public required IReadOnlyList<string> SourceColumns { get; set; }
+    public IReadOnlyDictionary<string, object?> SourceFilters { get; set; } = new Dictionary<string, object?>();
+    public int SourceTop { get; set; } = 500;
+
+    public required string TargetTable { get; set; }
+    public required IReadOnlyDictionary<string, string> ColumnMap { get; set; }
+
+    /// <summary>Target column/value pairs applied identically to every migrated row — for columns
+    /// with no source counterpart (audit stamps, IsActive defaults, etc.).</summary>
+    public IReadOnlyDictionary<string, object?> FixedValues { get; set; } = new Dictionary<string, object?>();
+
+    public required string PasswordColumn { get; set; }
+    public required string PlainPassword { get; set; }
+
+    /// <summary>Target column to stamp with <see cref="CreatedBy"/> on every migrated row. Omit if
+    /// the target table has no such column.</summary>
+    public string? CreatedByColumn { get; set; }
+    public string? CreatedBy { get; set; }
+
+    /// <summary>Target column to stamp with the server's current UTC time on every migrated row.
+    /// Omit if the target table has no such column — the value is always computed here, never
+    /// taken from SourceFilters/FixedValues/the source row.</summary>
+    public string? CreatedOnColumn { get; set; }
 }

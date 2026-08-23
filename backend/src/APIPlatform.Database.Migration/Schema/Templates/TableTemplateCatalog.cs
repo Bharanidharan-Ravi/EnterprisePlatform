@@ -40,8 +40,8 @@ public static class TableTemplateCatalog
                 Field("PhoneNumber", maxLength: 32),
                 Field("IsActive", "bool", nullable: false),
                 Field("IsLocked", "bool", nullable: false),
-                Field("FailedAttemptCount", "int", nullable: false),
-                Field("LastLoginOnUtc", "datetime")
+                //Field("FailedAttemptCount", "int", nullable: false),
+                //Field("LastLoginOnUtc", "datetime")
             ]
         },
         new()

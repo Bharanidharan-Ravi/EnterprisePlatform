@@ -13,6 +13,7 @@ using APIPlatform.Playground.Infrastructure;
 using APIPlatform.Playground.Models;
 using APIPlatform.Playground.Validators;
 using APIPlatform.Playground.Extensions;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,9 +46,28 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new APIPlatform.Playground.Infrastructure.ObjectToInferredTypesConverter()));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Lets Swagger UI's "Authorize" button attach a JWT to every request, so [Authorize] endpoints
+    // (Protected, and any real CrudEngine endpoint) can be exercised from the docs page: paste just
+    // the token from POST api/auth/login's response — Swashbuckle adds the "Bearer " prefix itself.
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Paste the access token from POST /api/auth/login here (no \"Bearer \" prefix needed)."
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        { new OpenApiSecuritySchemeReference("Bearer", document, null), new List<string>() }
+    });
+});
 
 var app = builder.Build();
 

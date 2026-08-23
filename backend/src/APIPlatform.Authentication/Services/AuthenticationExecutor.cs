@@ -57,7 +57,7 @@ public sealed class AuthenticationExecutor : IAuthenticationExecutor
         // 4. Refresh token (optional per plan)
         if (context.Plan?.GenerateRefreshToken == true)
         {
-            (context.RefreshToken, context.RefreshTokenExpiry) = _refresh.Generate(context.User.UserId);
+            (context.RefreshToken, context.RefreshTokenExpiry) = _refresh.Generate(context.User.UserId, context.SessionId);
         }
 
         // 5. Publish success event

@@ -59,6 +59,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<QuerySqlBuilder>();
         services.AddSingleton<ISqlDialectResolver, DefaultSqlDialectResolver>();
 
+        // Dynamic, table/column-agnostic reads and writes (Req: zero hardcoded query/command
+        // shapes) — the JSON-described counterpart to ICrudEngine<T> for callers with no
+        // compile-time entity type (e.g. a "reload user data" or generic "register a row" endpoint
+        // driven entirely by request body).
+        services.AddScoped<IDynamicQueryService, DynamicQueryService>();
+        services.AddScoped<IDynamicCommandService, DynamicCommandService>();
+
         // Pipeline stages (one responsibility each) + public engine facade (Req 2, Req 3, Req 10)
         services.AddScoped(typeof(Pipeline.Stages.MetadataResolutionStage<>));
         services.AddScoped(typeof(Pipeline.Stages.ContextEnrichmentStage<>));
