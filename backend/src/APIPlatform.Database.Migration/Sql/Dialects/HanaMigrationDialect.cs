@@ -15,4 +15,18 @@ internal sealed class HanaMigrationDialect : IMigrationSqlDialect
     public string TimestampType => "TIMESTAMP";
 
     public string IntegerType => "INTEGER";
+
+    public string BigIntType => "BIGINT";
+
+    public string BooleanType => "BOOLEAN";
+
+    public string DecimalType => "DECIMAL(18, 4)";
+
+    public string UnboundedTextType => "NCLOB";
+
+    public string StringType(int maxLength) => $"NVARCHAR({maxLength})";
+
+    /// <summary>HANA requires the parenthesized form — <c>ALTER TABLE t ADD (col TYPE)</c> —
+    /// unlike SQL Server's bare <c>ADD col TYPE</c>.</summary>
+    public string AddColumnClause(string columnDefinitions) => $"ADD ({columnDefinitions})";
 }

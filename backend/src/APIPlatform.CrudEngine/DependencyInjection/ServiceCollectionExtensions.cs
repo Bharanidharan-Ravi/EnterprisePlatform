@@ -1,3 +1,4 @@
+using APIPlatform.CrudEngine.Adapters;
 using APIPlatform.CrudEngine.Caching;
 using APIPlatform.CrudEngine.Defaults;
 using APIPlatform.CrudEngine.Engine;
@@ -43,6 +44,11 @@ public static class ServiceCollectionExtensions
         // Default values + validation (Req 7, Req 8) — safe no-op fallbacks
         services.TryAddSingleton<IEntityDefaultValueProvider, NoOpEntityDefaultValueProvider>();
         services.TryAddSingleton<IMultiResultOperationProvider, NoOpMultiResultOperationProvider>();
+
+        // Stored-procedure execution port (Req 14) — resolves the ASSUMPTION BOUNDARY flagged on
+        // IProcedurePort. Backed by APIPlatform.Data's IDatabaseExecutor by default; an app may
+        // override with its own adapter by registering IProcedurePort before calling AddCrudEngine().
+        services.TryAddScoped<IProcedurePort, DatabaseExecutorProcedurePort>();
         services.AddScoped<IDefaultValueProcessor, DefaultValueProcessor>();
         services.AddScoped<IValidationPipeline, MetadataValidationPipeline>();
 

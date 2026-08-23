@@ -20,12 +20,16 @@ Three tables, deliberately **not** one row per (notification × recipient):
   observe new notifications (sync) without the user having acknowledged them (read).
 
 Reference DDL for both supported engines lives under `Schema/SqlServer` and `Schema/Hana` — kept
-as human-readable documentation of the exact shape below. The executable counterpart is
-`APIPlatform.Database.Migration`'s `NotificationSqlServerMigration`/`NotificationHanaMigration`
-(see that package's README) — apply it via `services.AddDatabaseMigration();
-services.AddNotificationSchemaMigrations();` and an explicit `IMigrationRunner.RunAsync()` call
-from your application, or apply the reference `.sql` files by hand; either way the two must stay
-in sync (same table shape, keys, and indexes). IDs are API-generated `NVARCHAR(36)` GUIDs and
+as human-readable documentation of the exact shape below. To create it, either apply those
+reference `.sql` files by hand, or use `APIPlatform.Database.Migration`'s runtime schema engine,
+whose `notification` template carries this same `Notifications` shape (`POST` a
+`{ "template": "notification" }` definition to `ISchemaMigrationService` — see that package's
+README). Either way the two must stay in sync (same table shape, keys, and indexes).
+
+Note that the template covers `Notifications` only; `NotificationTargets` and
+`NotificationUserStates` are not templates and must come from the reference `.sql` files.
+
+IDs are API-generated `NVARCHAR(36)` GUIDs and
 timestamps are API-generated (`IClock.UtcNow`) —
 no `IDENTITY`, `NEWID()`, or `GETDATE()`/`CURRENT_TIMESTAMP` defaults anywhere in the schema.
 

@@ -2,6 +2,7 @@ using APIPlatform.Data.DependencyInjection;
 using APIPlatform.Data.Options;
 using APIPlatform.Database.Migration.Abstractions;
 using APIPlatform.Database.Migration.DependencyInjection;
+using APIPlatform.Database.Migration.Schema.Abstractions;
 using APIPlatform.Database.Migration.Sql.Dialects;
 using APIPlatform.Database.Migration.Tests.Fakes;
 using APIPlatform.Foundation.Interfaces;
@@ -11,8 +12,8 @@ using Xunit;
 namespace APIPlatform.Database.Migration.Tests.DependencyInjection;
 
 /// <summary>
-/// Verifies the AddDatabaseMigration()/AddNotificationSchemaMigrations() registration surface —
-/// mirrors APIPlatform.Database.Tests's DependencyInjectionTests style.
+/// Verifies the AddDatabaseMigration()/AddSchemaMigration() registration surface — mirrors
+/// APIPlatform.Database.Tests's DependencyInjectionTests style.
 /// </summary>
 public class ServiceCollectionExtensionsTests
 {
@@ -54,19 +55,27 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddNotificationSchemaMigrations_RegistersBothProviderVariants()
+    public void AddSchemaMigration_ResolvesSchemaMigrationService()
+    {
+        var services = BaseServices();
+        services.AddSchemaMigration();
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.NotNull(provider.GetService<ISchemaMigrationService>());
+        Assert.NotNull(provider.GetService<IMigrationSqlDialectResolver>());
+    }
+
+    /// <summary>Both extensions register the dialect resolver; calling both must not leave two
+    /// competing registrations behind.</summary>
+    [Fact]
+    public void AddDatabaseMigration_AndAddSchemaMigration_ShareOneDialectResolverRegistration()
     {
         var services = BaseServices();
         services.AddDatabaseMigration();
-        services.AddNotificationSchemaMigrations();
+        services.AddSchemaMigration();
 
-        using var provider = services.BuildServiceProvider();
-        var migrations = provider.GetServices<IMigration>().ToList();
-
-        Assert.Equal(2, migrations.Count);
-        Assert.Contains(migrations, m => m.SupportedProvider == DatabaseProvider.SqlServer);
-        Assert.Contains(migrations, m => m.SupportedProvider == DatabaseProvider.Hana);
-        Assert.All(migrations, m => Assert.Equal("Notification.Schema.v1", m.MigrationId));
+        Assert.Single(services, d => d.ServiceType == typeof(IMigrationSqlDialectResolver));
     }
 
     [Fact]

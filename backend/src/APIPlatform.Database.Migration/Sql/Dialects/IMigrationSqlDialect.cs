@@ -26,4 +26,26 @@ public interface IMigrationSqlDialect
 
     /// <summary>Column type for a plain integer: "INT" or "INTEGER".</summary>
     string IntegerType { get; }
+
+    /// <summary>Column type for a 64-bit integer.</summary>
+    string BigIntType { get; }
+
+    /// <summary>Column type for a true/false flag: "BIT" or "BOOLEAN".</summary>
+    string BooleanType { get; }
+
+    /// <summary>Column type for a fixed-scale money/quantity value.</summary>
+    string DecimalType { get; }
+
+    /// <summary>Column type for unbounded text — "NVARCHAR(MAX)" or "NCLOB" (HANA has no MAX
+    /// length). Also the type used for opaque JSON payload columns.</summary>
+    string UnboundedTextType { get; }
+
+    /// <summary>Column type for bounded text of <paramref name="maxLength"/> characters.</summary>
+    string StringType(int maxLength);
+
+    /// <summary>
+    /// The <c>ALTER TABLE</c> clause that introduces one or more new column definitions:
+    /// "ADD" on SQL Server, "ADD (" ... ")" on HANA, which requires the parenthesized form.
+    /// </summary>
+    string AddColumnClause(string columnDefinitions);
 }

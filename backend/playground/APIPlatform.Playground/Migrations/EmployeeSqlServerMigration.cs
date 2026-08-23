@@ -7,8 +7,9 @@ namespace APIPlatform.Playground.Migrations;
 
 /// <summary>
 /// Creates the Employees table for the Phase 2 "one generic entity end-to-end" test. Uses the
-/// platform's existing migration engine (APIPlatform.Database.Migration/IMigration), the same
-/// mechanism APIPlatform.Notification uses (see NotificationSqlServerMigration) — but lives
+/// platform's versioned migration engine (APIPlatform.Database.Migration/IMigration) — the
+/// mechanism for schema that ships with a release and must be applied exactly once, as opposed to
+/// ISchemaMigrationService, which builds tables from a request body at run time. It lives
 /// inside Playground (the application/test host), not inside APIPlatform.Database.Migration
 /// (a platform assembly), so the platform itself gains zero Employee-specific knowledge.
 /// Follows the platform's documented convention exactly: no IDENTITY, no NEWID(), no

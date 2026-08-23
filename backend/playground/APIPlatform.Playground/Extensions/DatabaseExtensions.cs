@@ -21,12 +21,17 @@ public static class DatabaseExtensions
     /// Wires APIPlatform.Database.Migration against Playground's own configured database — the
     /// "IQS API -> Database.Migration -> IQS Database" shape the platform's migration foundation
     /// is meant to support. Registration only: nothing here runs a migration automatically.
-    /// Trigger a run explicitly, e.g. via DatabaseMigrationController's POST /run.
+    ///
+    /// <para>Two mechanisms, both from the platform package, neither with any schema defined here:
+    /// <c>AddDatabaseMigration()</c> is the versioned runner for migrations that ship with a
+    /// release (no app currently registers one), and <c>AddSchemaMigration()</c> is the runtime
+    /// engine that creates/updates/drops tables from a request body — driven entirely by
+    /// SchemaMigrationController, which is the only reason it is registered.</para>
     /// </summary>
     public static IServiceCollection AddAPIPlatformDatabaseMigration(this IServiceCollection services)
     {
         services.AddDatabaseMigration();
-        services.AddNotificationSchemaMigrations();
+        services.AddSchemaMigration();
         return services;
     }
 }

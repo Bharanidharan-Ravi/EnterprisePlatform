@@ -13,4 +13,16 @@ internal sealed class SqlServerMigrationDialect : IMigrationSqlDialect
     public string TimestampType => "DATETIME2(3)";
 
     public string IntegerType => "INT";
+
+    public string BigIntType => "BIGINT";
+
+    public string BooleanType => "BIT";
+
+    public string DecimalType => "DECIMAL(18, 4)";
+
+    public string UnboundedTextType => "NVARCHAR(MAX)";
+
+    public string StringType(int maxLength) => $"NVARCHAR({maxLength})";
+
+    public string AddColumnClause(string columnDefinitions) => $"ADD {columnDefinitions}";
 }

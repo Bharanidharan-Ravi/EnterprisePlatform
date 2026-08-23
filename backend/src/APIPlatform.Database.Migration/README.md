@@ -38,10 +38,9 @@ public interface IMigration
 ```
 
 A logical migration that must exist on both SQL Server and SAP HANA is two `IMigration`
-implementations sharing the same `MigrationId`/`Version` (one per provider, see
-`Migrations/Notification/`) — `IMigrationRunner` only ever applies the one matching the
-application's configured `DatabaseOptions.Provider`, and both are tracked as the same row in
-history.
+implementations sharing the same `MigrationId`/`Version` (one per provider) —
+`IMigrationRunner` only ever applies the one matching the application's configured
+`DatabaseOptions.Provider`, and both are tracked as the same row in history.
 
 ## Registration — an explicit step, never automatic
 
@@ -49,14 +48,14 @@ history.
 services.AddSqlServerProvider();                 // or AddHanaProvider()
 services.AddDatabase(options => configuration.GetSection("Database").Bind(options));
 services.AddDatabaseMigration();                  // core engine — dialect resolver, history, runner
-services.AddNotificationSchemaMigrations();        // opt in to the migrations you want deployed
+services.AddSchemaMigration();                    // optional — runtime schema engine, see below
 ```
 
 `AddDatabaseMigration()` requires `AddDatabase(...)` (with a matching provider) and an `IClock`
 registration to already be present, exactly like `AddNotification()` — it registers neither
-itself. It also registers no `IMigration` — each schema-owning concern (Notification today, a
-future stored-procedure package, an application's own tables) opts in with its own
-`AddXxxMigrations()`-style extension, additive and independent of every other one.
+itself. It also registers no `IMigration` — each schema-owning concern (a stored-procedure
+package, an application's own tables) opts in with its own `AddXxxMigrations()`-style extension,
+additive and independent of every other one.
 
 Running migrations is always an explicit step your host chooses when to take:
 
@@ -96,13 +95,76 @@ partway rolls the whole migration back. **SAP HANA's DDL auto-commits regardless
 surrounding transaction.** On HANA, `MigrationRunner` runs a migration's statements directly (no
 transaction object is opened) and records history immediately after — a failure partway through a
 HANA migration can leave earlier `CREATE` statements in that same migration already committed.
-Keep HANA migrations as a single additive, one-time set of `CREATE`s (as
-`NotificationHanaMigration` is) rather than something meant to be safely retried after a partial
-failure.
+Keep HANA migrations as a single additive, one-time set of `CREATE`s rather than something meant
+to be safely retried after a partial failure.
 
 No `IDENTITY`, `NEWID()`, `GETDATE()`, or `MERGE` anywhere in this package — `MigrationHistory`'s
 `Id`/`AppliedOnUtc` are runner-generated (`Guid.NewGuid()`, injected `IClock`), matching every
 other platform table's API-generated ids/timestamps.
+
+## The runtime schema engine (`ISchemaMigrationService`)
+
+A second, separate mechanism, registered by `AddSchemaMigration()`: create, update, and delete
+tables from a **request body at run time**, rather than from migration classes fixed at build
+time. Use it when the schema is defined by an operator or an app rather than shipped with a
+release; use `IMigrationRunner` above when the change ships with a release and must be applied
+exactly once, in order, everywhere.
+
+Because there is no fixed set to apply, this engine keeps **no history** — it reads the live
+catalog (`INFORMATION_SCHEMA`) to decide whether an operation applies.
+
+`template` (which columns) and `table` (which physical name) are separate fields — a template is
+a column-set selector, never itself a table name:
+
+```jsonc
+// A predefined table, under its own default name ('login' -> 'Logins').
+{ "template": "login" }
+
+// The same predefined columns, plus two app-specific ones.
+{ "template": "login",
+  "fields": [ { "name": "EmployeeCode", "type": "string", "maxLength": 32 },
+              { "name": "DepartmentId", "type": "guid" } ] }
+
+// The same predefined columns again, but under a name the caller chooses instead of
+// 'Logins' — e.g. a second login table for another tenant.
+{ "template": "login", "table": "TenantALogins" }
+
+// No template — the table is built from these fields alone, so 'table' is required.
+{ "table": "CustomerFeedback",
+  "fields": [ { "name": "Rating",  "type": "int",    "nullable": false },
+              { "name": "Comment", "type": "string", "maxLength": 1000 } ] }
+```
+
+Predefined templates (`TableTemplateCatalog`): `login`, `role`, `permission`, `userrole`,
+`rolepermission`, `audit`, `notification`, `setting`, `attachment`. `template` is matched by key,
+case-insensitively; an unrecognized `template` is rejected outright rather than silently falling
+back to a plain table. Omitting `template` requires `table` and at least one field.
+
+Field types: `string` (`maxLength`, default 200), `text`, `int`, `long`, `bool`, `datetime`,
+`decimal`, `guid`, `json`. Per-field flags: `nullable`, `primaryKey`, `unique`, `indexed`.
+
+Every table the engine creates gets the same spine regardless of which path built it: an `Id` key
+column (unless a field claims `primaryKey`), an `AdditionalData` JSON column, and the audit set
+(`CreatedBy`, `CreatedOnUtc`, `LastModifiedBy`, `LastModifiedOnUtc`). Opt out per request with
+`includeAudit` / `includeAdditionalData`.
+
+**Update is additive only.** It adds columns the table does not have and leaves every existing
+column alone — nothing is retyped, renamed, or dropped, since those lose data and cannot be
+expressed safely from a request body. Added columns are always nullable, because a `NOT NULL`
+column cannot be added to a table that already has rows.
+
+### Security
+
+Every operation builds DDL from caller input, and **identifiers cannot be parameterized** — no
+database allows a table or column name to be bound as a parameter, so those names are
+concatenated into the statement text. `SchemaIdentifier` is therefore an allowlist, not an
+escaper: a name either matches `^[A-Za-z_][A-Za-z0-9_]{0,62}$` exactly or the request is rejected
+before any SQL text exists. Dialect quoting still applies on top, as defence in depth. Values
+(the table name in the catalog probes) are bound as parameters as usual.
+
+Anything that can reach `ISchemaMigrationService` can drop a table. Treat these as
+database-administrator operations and authorize them accordingly — which is why they are a
+separate opt-in registration rather than part of `AddDatabaseMigration()`.
 
 ## Known limitation
 
