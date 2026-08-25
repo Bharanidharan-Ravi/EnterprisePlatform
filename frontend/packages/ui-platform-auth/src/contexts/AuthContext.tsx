@@ -58,10 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (refreshInFlight.current) return refreshInFlight.current;
 
       const attempt = (async () => {
-        const { refreshToken } = authStore.getState();
-        if (!refreshToken) return false;
+        const { refreshToken, user } = authStore.getState();
+        if (!refreshToken || !user?.userId) return false;
         try {
-          const response = await AuthService.refresh(refreshToken);
+          const response = await AuthService.refresh(refreshToken, user.userId);
           return applyAuthResponse(response, rememberMeRef.current);
         } catch {
           return false;

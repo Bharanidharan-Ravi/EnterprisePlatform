@@ -3,6 +3,7 @@ import { isApiError } from '@nucleus/uiplatform-foundation';
 import { useAuth, LogoutButton } from '@nucleus/uiplatform-auth';
 import { useEmployeeList, useDeleteEmployee } from './employeeApi';
 import { EmployeeForm } from './EmployeeForm';
+import { AuthDebugPanel } from '../debug/AuthDebugPanel';
 import type { Employee } from './types';
 
 /**
@@ -46,6 +47,8 @@ export function EmployeeListPage() {
           Signed in as <strong>{user?.username}</strong> <LogoutButton />
         </div>
       </header>
+
+      <AuthDebugPanel />
 
       <div className="toolbar">
         <input

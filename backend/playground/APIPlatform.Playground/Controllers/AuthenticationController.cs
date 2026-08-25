@@ -217,11 +217,17 @@ public class AuthenticationController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Wrapped in <see cref="ApiEnvelope{T}"/> like every other endpoint here (see class summary) —
+    /// previously returned a raw <c>{ Message }</c> object, which ui-platform-foundation's
+    /// unwrapResponse() always treats as a failure (no top-level "success" field), so a UI caller
+    /// would see an error even on a 200 with a still-valid token.
+    /// </summary>
     [HttpGet("protected")]
     [Authorize]
     public IActionResult Protected()
     {
-        return Ok(new { Message = "You are authenticated" });
+        return Ok(ApiEnvelope.Ok(new { Message = "You are authenticated" }));
     }
 
     /// <summary>

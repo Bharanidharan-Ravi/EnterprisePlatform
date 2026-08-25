@@ -24,14 +24,14 @@ class AuthServiceImpl {
     });
   }
 
-  async refresh(refreshToken: string): Promise<AuthenticationResponse> {
+  async refresh(refreshToken: string, userId: string): Promise<AuthenticationResponse> {
     const client = getApiClient(getAppConfig());
     const { refreshPath } = getAuthConfig();
 
     return apiRequest<AuthenticationResponse>(client, {
       method: 'POST',
       url: refreshPath,
-      data: { refreshToken } satisfies RefreshTokenRequest,
+      data: { refreshToken, userId } satisfies RefreshTokenRequest,
     });
   }
 

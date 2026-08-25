@@ -45,14 +45,20 @@ public sealed class AuthenticationExecutor : IAuthenticationExecutor
             return;
         }
 
-        // 2. Build claims + JWT
+        // 2. Session — created BEFORE claims/JWT (below) so its id is available to embed as the
+        // "sid" claim. Building claims first (the original order here) left context.SessionId null
+        // at claims-build time, so login-issued tokens never carried "sid" — which silently disabled
+        // Playground's OnTokenValidated session-revocation check for every access token minted at
+        // login: logout/refresh would revoke the session server-side, but the still-unexpired old
+        // access token kept authenticating anyway, because there was no "sid" claim on it to check.
+        // (The refresh path already set SessionId before building claims, so only login was affected.)
+        var session = await _sessions.CreateAsync(context, context.CancellationToken);
+        context.SessionId = session.SessionId;
+
+        // 3. Build claims + JWT
         context.GeneratedClaims   = _claims.Build(context);
         (context.AccessToken, var expiry) = _jwt.Generate(context.GeneratedClaims);
         context.AccessTokenExpiry = expiry;
-
-        // 3. Session
-        var session = await _sessions.CreateAsync(context, context.CancellationToken);
-        context.SessionId = session.SessionId;
 
         // 4. Refresh token (optional per plan)
         if (context.Plan?.GenerateRefreshToken == true)
