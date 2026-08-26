@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { isApiError } from '@nucleus/uiplatform-foundation';
-import { useAuth, LogoutButton } from '@nucleus/uiplatform-auth';
+import { useAuth, LogoutButton, PermissionGuard } from '@nucleus/uiplatform-auth';
 import { useEmployeeList, useDeleteEmployee } from './employeeApi';
 import { EmployeeForm } from './EmployeeForm';
 import { AuthDebugPanel } from '../debug/AuthDebugPanel';
@@ -60,7 +60,12 @@ export function EmployeeListPage() {
           <option value="name">Name ↑</option>
           <option value="-name">Name ↓</option>
         </select>
-        <button onClick={() => setEditing('new')}>New Employee</button>
+        {/* UX-level gate only (see PermissionGuard's own doc comment) — the API pipeline
+            (ICrudAuthorizationService, called by EmployeesController.Create) is the real
+            authority and rejects this independently of what the UI shows. */}
+        <PermissionGuard permission="employee.create">
+          <button onClick={() => setEditing('new')}>New Employee</button>
+        </PermissionGuard>
       </div>
 
       {isLoading && <p>Loading…</p>}
@@ -87,19 +92,23 @@ export function EmployeeListPage() {
                 <td>{emp.department ?? '—'}</td>
                 <td>{emp.isActive ? 'Yes' : 'No'}</td>
                 <td>
-                  <button onClick={() => setEditing(emp)}>Edit</button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await deleteEmployee.mutateAsync(emp.id);
-                        refetch();
-                      } catch {
-                        // surfaced via deleteEmployee.error below
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <PermissionGuard permission="employee.update">
+                    <button onClick={() => setEditing(emp)}>Edit</button>
+                  </PermissionGuard>
+                  <PermissionGuard permission="employee.delete">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteEmployee.mutateAsync(emp.id);
+                          refetch();
+                        } catch {
+                          // surfaced via deleteEmployee.error below
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </PermissionGuard>
                 </td>
               </tr>
             ))}

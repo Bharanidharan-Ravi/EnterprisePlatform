@@ -6,6 +6,8 @@ using APIPlatform.Playground.Defaults;
 using APIPlatform.Playground.Infrastructure;
 using APIPlatform.Playground.Metadata;
 using APIPlatform.Playground.Migrations;
+using APIPlatform.Playground.Rbac;
+using APIPlatform.Rbac.Contracts;
 using APIPlatform.Rbac.DependencyInjection;
 using APIPlatform.Database.Migration.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,11 +36,21 @@ public static class EmployeeExtensions
         services.AddSingleton<IEntityDefaultValueProvider, EmployeeDefaultValueProvider>();
 
         services.AddCrudEngine();
+
+        // Durable IRoleStore, registered BEFORE AddRbac() so its TryAddSingleton<IRoleStore,
+        // InMemoryRoleStore>() is skipped in favor of this one (Rbac's documented "app
+        // registrations always win" convention). Replaces the default in-memory store, which is
+        // wiped on every restart — see SqlServerRoleStore's doc comment for why it's Singleton.
+        services.AddSingleton<IRoleStore, SqlServerRoleStore>();
         services.AddRbac();
 
         // Employee table migration — lives here (Playground), not inside
         // APIPlatform.Database.Migration, which is a platform assembly.
         services.AddScoped<IMigration, EmployeeSqlServerMigration>();
+
+        // RBAC's durable schema (Roles/UserRoles/PermissionGrants/PolicyRules) — same reasoning
+        // as the Employee migration above.
+        services.AddScoped<IMigration, RbacSqlServerMigration>();
 
         services.AddHostedService<Services.EmployeeModuleInitializationService>();
 

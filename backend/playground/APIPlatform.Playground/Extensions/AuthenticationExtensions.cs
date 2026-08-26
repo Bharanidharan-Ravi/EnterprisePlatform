@@ -2,6 +2,7 @@
 using APIPlatform.Authentication.Interfaces;
 using APIPlatform.Authentication.Jwt;
 using APIPlatform.Playground.Resolvers;
+using APIPlatform.Rbac.Contracts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,12 +20,28 @@ public static class AuthenticationExtensions
     public static IServiceCollection AddAPIPlatformAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         // Real user store: [Nucleus].[dbo].[Logins], via IDynamicQueryService — not the two
-        // hardcoded logins PlaygroundIdentityResolver used for the Phase 2 RBAC proof. NOTE: RBAC
-        // role grants in EmployeeModuleInitializationService are still seeded against the hardcoded
-        // "user-123"/"user-456" ids from that class, so real Logins users will authenticate fine
-        // but land with no role assigned (Employee CRUD denies by default) until that seeding is
-        // updated to target real Ids too.
-        services.AddScoped<IIdentityResolver, LoginsIdentityResolver>();
+        // hardcoded logins PlaygroundIdentityResolver used for the Phase 2 RBAC proof.
+        //
+        // IIdentityResolver is registered as RbacEnrichedIdentityResolver wrapping
+        // LoginsIdentityResolver: neither resolver populates UserInfo.RoleIds/PermissionIds
+        // itself, so without the wrapper ClaimsBuilder always emits a JWT with no role/permission
+        // claims. The decorator asks APIPlatform.Rbac (IRoleService/IPermissionResolver, live,
+        // keyed off whatever UserId the inner resolver returns) to fill both in before login's
+        // claims are built. This requires AddRbac() to be registered somewhere in the container —
+        // AddEmployeeModule() does that (see Program.cs) — resolution is lazy, so call order
+        // between AddAPIPlatformAuthentication() and AddEmployeeModule() doesn't matter, only that
+        // both run before the host is built.
+        //
+        // RBAC role/permission GRANTS themselves are a separate, data-side concern: a real Logins
+        // user still needs a role assigned against their actual Id (e.g. via IRoleStore, once a
+        // durable store + admin UI exists — see the platform's RBAC rollout plan) before they see
+        // any role/permission claims here. EmployeeModuleInitializationService currently only
+        // seeds the two hardcoded "user-123"/"user-456" ids for the Phase 2 proof.
+        services.AddScoped<LoginsIdentityResolver>();
+        services.AddScoped<IIdentityResolver>(sp => new RbacEnrichedIdentityResolver(
+            sp.GetRequiredService<LoginsIdentityResolver>(),
+            sp.GetRequiredService<IRoleService>(),
+            sp.GetRequiredService<IPermissionResolver>()));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
 
         services.AddAuthenticationPlatform();
