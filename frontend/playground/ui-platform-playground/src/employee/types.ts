@@ -9,7 +9,9 @@ export interface Employee {
   id: string;
   employeeCode: string;
   name: string;
-  email: string;
+  /** Field-masked (Phase 1): null when the caller lacks Email access — currently only
+   * employee-admin holds it. Never re-derive visibility client-side; render whatever the API sent. */
+  email: string | null;
   department: string | null;
   isActive: boolean;
   createdOn: string;

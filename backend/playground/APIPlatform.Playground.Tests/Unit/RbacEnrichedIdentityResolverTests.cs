@@ -21,19 +21,21 @@ public sealed class RbacEnrichedIdentityResolverTests
 {
     private const string TenantId = HttpCurrentUserContextAdapter.TestTenantId;
 
-    private static (RbacEnrichedIdentityResolver Resolver, InMemoryRoleStore Store) BuildSubject(IIdentityResolver inner)
+    private static (RbacEnrichedIdentityResolver Resolver, InMemoryRoleStore Store, InMemoryUserScopeStore Scopes) BuildSubject(IIdentityResolver inner)
     {
         var services = new ServiceCollection();
         services.AddRbac();
         var provider = services.BuildServiceProvider();
 
         var store = (InMemoryRoleStore)provider.GetRequiredService<IRoleStore>();
+        var scopes = new InMemoryUserScopeStore();
         var resolver = new RbacEnrichedIdentityResolver(
             inner,
             provider.GetRequiredService<IRoleService>(),
-            provider.GetRequiredService<IPermissionResolver>());
+            provider.GetRequiredService<IPermissionResolver>(),
+            scopes);
 
-        return (resolver, store);
+        return (resolver, store, scopes);
     }
 
     private static UserInfo BareUser(string userId, string username) => new()
@@ -62,7 +64,7 @@ public sealed class RbacEnrichedIdentityResolverTests
     [Fact]
     public async Task ResolveAsync_FillsRoleIdsAndPermissionIds_FromLiveRbacGrants()
     {
-        var (resolver, store) = BuildSubject(new StubInnerResolver(BareUser("user-123", "admin")));
+        var (resolver, store, _) = BuildSubject(new StubInnerResolver(BareUser("user-123", "admin")));
 
         store.SeedRole(new Role { Id = "employee-admin", Name = "Employee Administrator", TenantId = TenantId });
         await store.AssignRoleAsync(TenantId, "user-123", "employee-admin");
@@ -84,7 +86,7 @@ public sealed class RbacEnrichedIdentityResolverTests
     [Fact]
     public async Task ResolveByIdAsync_FillsRoleIdsAndPermissionIds_SameAsResolveAsync()
     {
-        var (resolver, store) = BuildSubject(new StubInnerResolver(BareUser("user-456", "viewer")));
+        var (resolver, store, _) = BuildSubject(new StubInnerResolver(BareUser("user-456", "viewer")));
 
         store.SeedRole(new Role { Id = "employee-viewer", Name = "Employee Viewer", TenantId = TenantId });
         await store.AssignRoleAsync(TenantId, "user-456", "employee-viewer");
@@ -106,7 +108,7 @@ public sealed class RbacEnrichedIdentityResolverTests
     [Fact]
     public async Task ResolveAsync_UserWithNoGrants_ReturnsEmptyRoleAndPermissionIds_NotDenied()
     {
-        var (resolver, _) = BuildSubject(new StubInnerResolver(BareUser("someone-with-no-role", "ghost")));
+        var (resolver, _, _) = BuildSubject(new StubInnerResolver(BareUser("someone-with-no-role", "ghost")));
 
         var result = await resolver.ResolveAsync("ghost", null);
 
@@ -120,11 +122,37 @@ public sealed class RbacEnrichedIdentityResolverTests
     [Fact]
     public async Task ResolveAsync_InnerResolverReturnsNull_PropagatesNullWithoutCallingRbac()
     {
-        var (resolver, _) = BuildSubject(new StubInnerResolver(null));
+        var (resolver, _, _) = BuildSubject(new StubInnerResolver(null));
 
         var result = await resolver.ResolveAsync("no-such-user", null);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_FillsDepartmentId_FromTheUserScopeStore()
+    {
+        // Phase 2: [Logins] has no department column, so without this the JWT never carried a
+        // department_id claim and the UI had no way to show a user their own scope. Enforcement
+        // reads the same store live per request; this only affects what the token says.
+        var (resolver, _, scopes) = BuildSubject(new StubInnerResolver(BareUser("user-456", "viewer")));
+        await scopes.SetScopeAsync(TenantId, "user-456", ScopeKeys.Department, "Engineering");
+
+        var result = await resolver.ResolveAsync("viewer", null);
+
+        Assert.NotNull(result);
+        Assert.Equal("Engineering", result!.DepartmentId);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_UserWithNoScopeRow_LeavesDepartmentIdNull()
+    {
+        var (resolver, _, _) = BuildSubject(new StubInnerResolver(BareUser("user-456", "viewer")));
+
+        var result = await resolver.ResolveAsync("viewer", null);
+
+        Assert.NotNull(result);
+        Assert.Null(result!.DepartmentId);
     }
 
     [Fact]
@@ -140,7 +168,7 @@ public sealed class RbacEnrichedIdentityResolverTests
             IsLocked = false,
             TenantId = "tenant-x"
         };
-        var (resolver, _) = BuildSubject(new StubInnerResolver(user));
+        var (resolver, _, _) = BuildSubject(new StubInnerResolver(user));
 
         var result = await resolver.ResolveAsync("admin", null);
 

@@ -41,7 +41,8 @@ public static class AuthenticationExtensions
         services.AddScoped<IIdentityResolver>(sp => new RbacEnrichedIdentityResolver(
             sp.GetRequiredService<LoginsIdentityResolver>(),
             sp.GetRequiredService<IRoleService>(),
-            sp.GetRequiredService<IPermissionResolver>()));
+            sp.GetRequiredService<IPermissionResolver>(),
+            sp.GetRequiredService<IUserScopeStore>()));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
 
         services.AddAuthenticationPlatform();

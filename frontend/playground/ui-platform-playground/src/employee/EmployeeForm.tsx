@@ -30,7 +30,11 @@ export function EmployeeForm({ editing, onDone, onCancel }: EmployeeFormProps) {
     ? {
         employeeCode: editing.employeeCode,
         name: editing.name,
-        email: editing.email,
+        // Field-masked (Phase 1): null when the API omitted Email for this caller. Falls back to
+        // '' rather than leaving the input undefined — this form is only ever reachable by a role
+        // holding employee.update (PermissionGuard on the list page), which today always implies
+        // Email access too, but the fallback keeps the form itself from breaking if that ever changes.
+        email: editing.email ?? '',
         department: editing.department ?? '',
         isActive: editing.isActive,
       }

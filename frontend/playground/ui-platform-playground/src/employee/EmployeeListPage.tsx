@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { isApiError } from '@nucleus/uiplatform-foundation';
-import { useAuth, LogoutButton, PermissionGuard } from '@nucleus/uiplatform-auth';
+import { useAuth, useCurrentUser, LogoutButton, PermissionGuard } from '@nucleus/uiplatform-auth';
 import { useEmployeeList, useDeleteEmployee } from './employeeApi';
 import { EmployeeForm } from './EmployeeForm';
 import { AuthDebugPanel } from '../debug/AuthDebugPanel';
@@ -14,6 +14,10 @@ import type { Employee } from './types';
  */
 export function EmployeeListPage() {
   const { user } = useAuth();
+  // Display only. The rows below are whatever GET /api/employees returned — row-level scoping is
+  // applied by the API (RowScopeCrudHook), and this page must never re-filter by department
+  // client-side. Showing the active scope just makes a legitimately short list explicable.
+  const scopedToDepartment = useCurrentUser()?.departmentId;
   const [employeeCodeFilter, setEmployeeCodeFilter] = useState('');
   const [sort, setSort] = useState('name');
   const [editing, setEditing] = useState<Employee | 'new' | null>(null);
@@ -44,7 +48,9 @@ export function EmployeeListPage() {
       <header>
         <h1>Employees (Phase 2 — Application test UI, NOT UIPlatform Grid)</h1>
         <div>
-          Signed in as <strong>{user?.username}</strong> <LogoutButton />
+          Signed in as <strong>{user?.username}</strong>
+          {scopedToDepartment && <> — seeing the <strong>{scopedToDepartment}</strong> department only</>}{' '}
+          <LogoutButton />
         </div>
       </header>
 
@@ -84,11 +90,20 @@ export function EmployeeListPage() {
             </tr>
           </thead>
           <tbody>
+            {employees.length === 0 && (
+              <tr>
+                {/* Row scoping makes an empty list a normal outcome, not a failure — say so
+                    rather than rendering a bare table that reads as a broken page. */}
+                <td colSpan={6}>No employees match what you can see.</td>
+              </tr>
+            )}
             {employees.map((emp) => (
               <tr key={emp.id}>
                 <td>{emp.employeeCode}</td>
                 <td>{emp.name}</td>
-                <td>{emp.email}</td>
+                {/* Field-masked (Phase 1): null means the API omitted it for this caller, not that
+                    the value is empty — render a placeholder, don't re-derive who can see it. */}
+                <td>{emp.email ?? '—'}</td>
                 <td>{emp.department ?? '—'}</td>
                 <td>{emp.isActive ? 'Yes' : 'No'}</td>
                 <td>

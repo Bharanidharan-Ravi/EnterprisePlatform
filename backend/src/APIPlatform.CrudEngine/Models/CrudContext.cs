@@ -25,6 +25,22 @@ public sealed class CrudContext<TEntity> where TEntity : class
     public IReadOnlyList<SortSpec>? RequestedSorting { get; init; }
     public PagingSpec? RequestedPaging { get; init; }
 
+    /// <summary>
+    /// Filters imposed by the platform or by an <see cref="Hooks.ICrudPipelineHook"/> rather than
+    /// asked for by the caller — row-level security scoping, soft-delete exclusion, and the like.
+    /// Populated in OnBeforeAsync (hooks run before ExecutionPlanningStage) and merged into
+    /// <see cref="Plan"/>.Filters by that stage.
+    ///
+    /// Deliberately a SECOND, mutable dictionary rather than making
+    /// <see cref="RequestedFilters"/> settable: "what the caller asked for" stays immutable for
+    /// the whole pipeline (so diagnostics/audit can always report the original request), while
+    /// "what the platform additionally imposed" is separately inspectable. On a key collision
+    /// ExecutionPlanningStage lets the imposed filter win — a caller must never be able to widen
+    /// a security-imposed scope by naming the same field itself.
+    /// </summary>
+    public IDictionary<string, object?> AdditionalFilters { get; } =
+        new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
     public OperationPlan? Plan { get; set; }
 
     public ValidationResult? ValidationResult { get; set; }

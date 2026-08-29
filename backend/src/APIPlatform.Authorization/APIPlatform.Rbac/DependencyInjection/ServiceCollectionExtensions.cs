@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IRoleStore, InMemoryRoleStore>();
         services.TryAddSingleton<IFieldPermissionRuleStore, InMemoryFieldPermissionRuleStore>();
         services.TryAddSingleton<IRowPermissionRuleStore, InMemoryRowPermissionRuleStore>();
+        services.TryAddSingleton<IUserScopeStore, InMemoryUserScopeStore>();
         services.TryAddSingleton<IPolicyRuleRegistry, PolicyRuleRegistry>();
         services.TryAddSingleton<IRowFilterRegistry, RowFilterRegistry>();
         services.TryAddSingleton<IPolicyEngine, PolicyEngine>();

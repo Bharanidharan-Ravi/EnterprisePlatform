@@ -26,6 +26,15 @@ namespace APIPlatform.Playground.Services;
 /// "admin"/"viewer" (see SeedRealLoginsUserAsync) — the actual running app authenticates through
 /// LoginsIdentityResolver, not PlaygroundIdentityResolver, so without this a real login always
 /// lands with zero roles/permissions (RbacEnrichedIdentityResolver has nothing to enrich from).
+///
+/// Row-level scoping (Phase 2) seeds RULES only — "Employee is scoped by OwnDepartment", and
+/// "employee-admin is exempt". It deliberately seeds no per-user scope VALUES: which department a
+/// real person belongs to is user data, not module configuration, and belongs in the role/scope
+/// administration surface rather than in startup code (see RbacUserScopes / IUserScopeStore).
+///
+/// Field-level masking (Phase 1) seeds one rule — Employee.Email requires
+/// EmployeeFieldMasks.EmailAccessPermissionKey — and grants that key to employee-admin only, so
+/// FieldMaskCrudHook nulls Email out of every response for every other role.
 /// </summary>
 public sealed class EmployeeModuleInitializationService : IHostedService
 {
@@ -58,10 +67,17 @@ public sealed class EmployeeModuleInitializationService : IHostedService
             _logger.LogError(ex, "Failed to run Employee module migrations.");
         }
 
+        // Registration, not seeding: putting the named row-filter delegates into the (Singleton)
+        // IRowFilterRegistry is pure in-process wiring with no database involved, so unlike the
+        // seeding below it must not be allowed to fail quietly — a missing delegate means
+        // ExecutionStage silently resolves no filter and every row-scoped user sees every row.
+        // Hosted services start before the server accepts requests, so this is in place in time.
+        EmployeeRowFilters.RegisterAll(scope.ServiceProvider.GetRequiredService<IRowFilterRegistry>());
+
         try
         {
             await SeedRbacAsync(scope.ServiceProvider, cancellationToken);
-            _logger.LogInformation("Employee module RBAC test data seeded (admin=full CRUD, viewer=read-only).");
+            _logger.LogInformation("Employee module RBAC test data seeded (admin=full CRUD + unscoped read, viewer=read-only, scoped to own department).");
         }
         catch (Exception ex)
         {
@@ -72,6 +88,8 @@ public sealed class EmployeeModuleInitializationService : IHostedService
     private static async Task SeedRbacAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         var roleStore = services.GetRequiredService<IRoleStore>();
+        var rowRuleStore = services.GetRequiredService<IRowPermissionRuleStore>();
+        var fieldRuleStore = services.GetRequiredService<IFieldPermissionRuleStore>();
 
         const string tenantId = Infrastructure.HttpCurrentUserContextAdapter.TestTenantId;
         const string entityKey = EmployeeEntityDefinitionProvider.EntityName;
@@ -95,7 +113,18 @@ public sealed class EmployeeModuleInitializationService : IHostedService
                 return;
         }
 
-        // admin (PlaygroundIdentityResolver user-123) -> full CRUD
+        // Row-level scoping rule for Employee: every read of this entity runs through the
+        // "OwnDepartment" filter delegate (registered in StartAsync). Attached per (tenant,
+        // entity) because that is the only shape IRowPermissionRuleStore supports — which role is
+        // exempt is decided by the delegate, via the employee.read.all grant below.
+        await rowRuleStore.AddRuleAsync(tenantId, new RowPermissionRule
+        {
+            EntityKey = entityKey.ToLowerInvariant(),
+            FilterDelegateKey = EmployeeRowFilters.OwnDepartment
+        }, cancellationToken);
+
+        // admin (PlaygroundIdentityResolver user-123) -> full CRUD, plus read.all: sees every
+        // department's rows, i.e. opts out of the row filter the rule above applies.
         await roleStore.AssignRoleAsync(tenantId, "user-123", AdminRoleId, cancellationToken);
         foreach (var action in new[] { "read", "create", "update", "delete" })
         {
@@ -107,6 +136,35 @@ public sealed class EmployeeModuleInitializationService : IHostedService
                 Effect = PermissionEffect.Allow
             }, cancellationToken);
         }
+
+        await roleStore.GrantPermissionAsync(new PermissionGrant
+        {
+            TenantId = tenantId,
+            RoleId = AdminRoleId,
+            PermissionKey = EmployeeRowFilters.UnscopedReadPermissionKey,
+            Effect = PermissionEffect.Allow
+        }, cancellationToken);
+
+        // Field-mask rule for Email: one rule, one permission key. Held → FieldAccess.Write
+        // (admin can view and edit it); not held → FieldMaskDescriptor.FromRules defaults to None,
+        // so FieldMaskCrudHook nulls it out of every response for every other role. Attached per
+        // (tenant, entity, field) — same "rule doesn't know about roles, a permission key decides
+        // who's exempt" shape as the row-scoping rule above.
+        await fieldRuleStore.AddRuleAsync(tenantId, new FieldPermissionRule
+        {
+            EntityKey = entityKey.ToLowerInvariant(),
+            FieldKey = EmployeeFieldMasks.EmailField,
+            PermissionKey = EmployeeFieldMasks.EmailAccessPermissionKey,
+            Access = FieldAccess.Write
+        }, cancellationToken);
+
+        await roleStore.GrantPermissionAsync(new PermissionGrant
+        {
+            TenantId = tenantId,
+            RoleId = AdminRoleId,
+            PermissionKey = EmployeeFieldMasks.EmailAccessPermissionKey,
+            Effect = PermissionEffect.Allow
+        }, cancellationToken);
 
         // viewer (PlaygroundIdentityResolver user-456) -> read only; create/update/delete are
         // denied purely by absence of a grant (RbacOptions.DefaultDeny = true).

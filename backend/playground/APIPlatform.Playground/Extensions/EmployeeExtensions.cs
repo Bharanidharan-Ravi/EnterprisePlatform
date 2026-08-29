@@ -37,12 +37,33 @@ public static class EmployeeExtensions
 
         services.AddCrudEngine();
 
-        // Durable IRoleStore, registered BEFORE AddRbac() so its TryAddSingleton<IRoleStore,
-        // InMemoryRoleStore>() is skipped in favor of this one (Rbac's documented "app
-        // registrations always win" convention). Replaces the default in-memory store, which is
-        // wiped on every restart — see SqlServerRoleStore's doc comment for why it's Singleton.
+        // Durable RBAC stores, all registered BEFORE AddRbac() so its TryAdd* defaults (which are
+        // in-memory and wiped on every restart) are skipped in favor of these — Rbac's documented
+        // "app registrations always win" convention. See each store's doc comment for why they are
+        // Singletons that open their own DI scope rather than injecting the Scoped IDatabaseExecutor.
         services.AddSingleton<IRoleStore, SqlServerRoleStore>();
+        services.AddSingleton<IRowPermissionRuleStore, SqlServerRowPermissionRuleStore>();
+        services.AddSingleton<IFieldPermissionRuleStore, SqlServerFieldPermissionRuleStore>();
+
+        // Row-scope VALUES per user (which department/branch/company they belong to). IUserScopeStore
+        // is an APIPlatform.Rbac contract — Rbac's own DefaultAuthorizationContextFactory already
+        // reads it and merges the result into AuthorizationContext.Claims, so no factory override is
+        // needed here; consumed both at request time (via that factory) and at login
+        // (RbacEnrichedIdentityResolver, so the JWT carries department_id for the UI).
+        services.AddSingleton<IUserScopeStore, SqlServerUserScopeStore>();
+
         services.AddRbac();
+
+        // Row/data-level scoping for every entity, applied through the platform's own CRUD
+        // extension point rather than per-controller code. Registered after AddCrudEngine(), which
+        // is where ICrudPipelineHook is consumed from (IEnumerable, all hooks run). Bridges
+        // CrudEngine and Rbac — two packages deliberately unaware of each other — so it lives here,
+        // not inside either package (same reasoning as EmployeesController calling
+        // ICrudAuthorizationService directly).
+        services.AddCrudPipelineHook<RowScopeCrudHook>();
+
+        // Field-level masking for every entity, same reasoning/placement as RowScopeCrudHook.
+        services.AddCrudPipelineHook<FieldMaskCrudHook>();
 
         // Employee table migration — lives here (Playground), not inside
         // APIPlatform.Database.Migration, which is a platform assembly.
@@ -51,6 +72,13 @@ public static class EmployeeExtensions
         // RBAC's durable schema (Roles/UserRoles/PermissionGrants/PolicyRules) — same reasoning
         // as the Employee migration above.
         services.AddScoped<IMigration, RbacSqlServerMigration>();
+
+        // Phase 2's additions to that schema (RowPermissionRules/UserScopes), as a separate
+        // versioned migration — an already-applied migration is never edited in place.
+        services.AddScoped<IMigration, RbacRowScopeSqlServerMigration>();
+
+        // Field-masking's own schema addition (FieldPermissionRules), same reasoning.
+        services.AddScoped<IMigration, RbacFieldMaskSqlServerMigration>();
 
         services.AddHostedService<Services.EmployeeModuleInitializationService>();
 
